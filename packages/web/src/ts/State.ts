@@ -219,31 +219,29 @@ class State {
     }
 
     private async getFirstVisitState(): Promise<ParsedState> {
-        // guesstimate where the user is based on their IP address
-        const [userLocation, regions] = await Promise.all([
-            api.queryIpLocation(),
-            api.queryRegions(),
-        ]);
+    // Hardcode the default routes and colors
+    const routes = [
+        ["NZL_AKL|50A" as Id, true, "blue"],
+        ["NZL_AKL|50B" as Id, true, "green"],
+        ["NZL_AKL|501" as Id, true, "yellow"],
+        ["NZL_AKL|502" as Id, true, "red"],
+    ];
 
-        // find the closest region to the user, defaulting to NZ if unknown
-        const closestRegion = userLocation
-            ? await this.getClosestRegion(userLocation)
-            : regions.find(r => r.code === "NZL_AKL") ?? [...regions.values()][0];
-
-        const defaultColors = ["#9400D3", "#E67C13", "#1DCE1D", "#5555FF"];
-        const routes = closestRegion.defaultRouteIds
-            .slice(0, defaultColors.length)
-            .map((id, i) => [id, true, defaultColors[i]] as [Id, boolean, string]);
-
-        return {
-            version: STATE_VERSION,
-            routes,
-            settings: {
-                currentRegion: closestRegion.code,
-            },
-            map: [closestRegion.location.lat, closestRegion.location.lng, closestRegion.defaultZoom],
-        };
+    // Get the map settings for Auckland
+    const auckland = (await api.queryRegions()).find(r => r.code === "NZL_AKL");
+    if (auckland === undefined) {
+        throw new Error("Auckland region not found");
     }
+
+    return {
+        version: STATE_VERSION,
+        routes,
+        settings: {
+            currentRegion: "NZL_AKL",
+        },
+        map: [auckland.location.lat, auckland.location.lng, auckland.defaultZoom],
+    };
+}
 
     public async load() {
         // trim leading # off location.hash
